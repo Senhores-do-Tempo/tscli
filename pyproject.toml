@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tscli"
+version = "0.1.0"
+description = "CLI tool for time series analysis and forecasting using DARTS"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "darts>=0.30.0",
+  "numpy>=1.26.0",
+  "pandas>=2.2.0",
+  "rich>=13.7.0",
+  "typer>=0.12.3",
+]
+
+[project.scripts]
+tscli = "tscli.main:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
