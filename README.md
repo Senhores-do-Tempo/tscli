@@ -10,6 +10,8 @@ It is designed for a simple workflow:
 - compare models on a holdout window
 - generate and export forecasts
 
+![tscli demo](./tscli.gif)
+
 ## What It Does
 
 - works directly from CSV files
