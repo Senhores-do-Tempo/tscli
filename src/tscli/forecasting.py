@@ -5,15 +5,11 @@ from importlib import import_module
 from pathlib import Path
 from typing import Any
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from darts import TimeSeries
-from statsmodels.tsa.arima.model import ARIMA as StatsmodelsARIMA
-from statsmodels.tsa.statespace.sarimax import SARIMAX
-from tqdm import tqdm
 
 from tscli.data import LoadedSeries
+from tscli.model_catalog import SUPPORTED_MODELS
 
 
 @dataclass(frozen=True)
@@ -23,32 +19,22 @@ class ModelSpec:
 
 
 MODEL_SPECS = {
-    "naive-last": ModelSpec("Repeats the last observed value.", "built-in"),
-    "naive-drift": ModelSpec("Extends the line from the first to the last observation.", "built-in"),
-    "naive-seasonal": ModelSpec("Repeats the last seasonal pattern.", "built-in"),
-    "moving-average": ModelSpec("Forecasts with the mean of the latest seasonal window.", "built-in"),
-    "weighted-moving-average": ModelSpec(
-        "Forecasts with a linearly weighted average of the latest seasonal window.", "built-in"
-    ),
-    "exp-smoothing": ModelSpec("Forecasts with an exponentially weighted moving average level.", "built-in"),
-    "seasonal-average": ModelSpec(
-        "Forecasts each seasonal position with the average of past matching positions.", "built-in"
-    ),
-    "seasonal-median": ModelSpec(
-        "Forecasts each seasonal position with the median of past matching positions.", "built-in"
-    ),
-    "linear-trend": ModelSpec("Fits a straight trend line across the series.", "built-in"),
-    "quadratic-trend": ModelSpec("Fits a quadratic trend curve across the series.", "built-in"),
-    "arima": ModelSpec("DARTS ARIMA model for classical forecasting.", "darts-classical"),
-    "theta": ModelSpec("DARTS Theta model for classical univariate forecasting.", "darts-classical"),
-    "exponential-smoothing": ModelSpec(
-        "DARTS ExponentialSmoothing model for level, trend, and seasonality.", "darts-classical"
-    ),
-    "auto-arima": ModelSpec("DARTS AutoARIMA model with automatic order selection.", "darts-classical"),
-    "sarima": ModelSpec("DARTS ARIMA model configured with seasonal ARIMA defaults.", "darts-classical"),
+    "naive-last": ModelSpec(SUPPORTED_MODELS["naive-last"], "built-in"),
+    "naive-drift": ModelSpec(SUPPORTED_MODELS["naive-drift"], "built-in"),
+    "naive-seasonal": ModelSpec(SUPPORTED_MODELS["naive-seasonal"], "built-in"),
+    "moving-average": ModelSpec(SUPPORTED_MODELS["moving-average"], "built-in"),
+    "weighted-moving-average": ModelSpec(SUPPORTED_MODELS["weighted-moving-average"], "built-in"),
+    "exp-smoothing": ModelSpec(SUPPORTED_MODELS["exp-smoothing"], "built-in"),
+    "seasonal-average": ModelSpec(SUPPORTED_MODELS["seasonal-average"], "built-in"),
+    "seasonal-median": ModelSpec(SUPPORTED_MODELS["seasonal-median"], "built-in"),
+    "linear-trend": ModelSpec(SUPPORTED_MODELS["linear-trend"], "built-in"),
+    "quadratic-trend": ModelSpec(SUPPORTED_MODELS["quadratic-trend"], "built-in"),
+    "arima": ModelSpec(SUPPORTED_MODELS["arima"], "darts-classical"),
+    "theta": ModelSpec(SUPPORTED_MODELS["theta"], "darts-classical"),
+    "exponential-smoothing": ModelSpec(SUPPORTED_MODELS["exponential-smoothing"], "darts-classical"),
+    "auto-arima": ModelSpec(SUPPORTED_MODELS["auto-arima"], "darts-classical"),
+    "sarima": ModelSpec(SUPPORTED_MODELS["sarima"], "darts-classical"),
 }
-
-SUPPORTED_MODELS = {name: spec.description for name, spec in MODEL_SPECS.items()}
 
 
 @dataclass
@@ -74,7 +60,9 @@ class BenchmarkResult:
     skipped_models: dict[str, str]
 
 
-def build_series(dataset: LoadedSeries) -> TimeSeries:
+def build_series(dataset: LoadedSeries) -> Any:
+    from darts import TimeSeries
+
     frame = dataset.frame[[dataset.time_col, dataset.target_col]].dropna().copy()
 
     if dataset.time_col == "__index__":
@@ -296,6 +284,9 @@ def _statsmodels_fallback_forecast(
     horizon: int,
     seasonal_period: int,
 ) -> pd.DataFrame:
+    from statsmodels.tsa.arima.model import ARIMA as StatsmodelsARIMA
+    from statsmodels.tsa.statespace.sarimax import SARIMAX
+
     frame = dataset.frame[[dataset.time_col, dataset.target_col]].dropna().copy()
     history = frame[dataset.target_col].astype(float).to_numpy()
 
@@ -326,43 +317,6 @@ def _statsmodels_fallback_forecast(
             dataset.target_col: forecast_values,
         }
     )
-
-
-def _statsmodels_classical_forecast(
-    dataset: LoadedSeries,
-    model_name: str,
-    horizon: int,
-    seasonal_period: int,
-) -> pd.DataFrame:
-    frame = dataset.frame[[dataset.time_col, dataset.target_col]].dropna().copy()
-    history = frame[dataset.target_col].astype(float).to_numpy()
-
-    try:
-        if model_name == "arima":
-            fitted = StatsmodelsARIMA(history, order=(1, 1, 1)).fit()
-        else:
-            seasonal_order = (1, 1, 1, seasonal_period)
-            # Small datasets often cannot support a full seasonal parameterization.
-            if len(history) < max(24, seasonal_period * 2 + 6):
-                seasonal_order = (0, 1, 1, seasonal_period)
-            fitted = SARIMAX(
-                history,
-                order=(1, 1, 1),
-                seasonal_order=seasonal_order,
-                enforce_stationarity=False,
-                enforce_invertibility=False,
-            ).fit(disp=False)
-        forecast_values = np.asarray(fitted.forecast(steps=horizon), dtype=float)
-    except Exception as exc:
-        raise ValueError(f"Model '{model_name}' failed to fit or predict. Original error: {exc}") from exc
-
-    forecast_frame = pd.DataFrame(
-        {
-            dataset.time_col: _future_index(frame, dataset.time_col, horizon),
-            dataset.target_col: forecast_values,
-        }
-    )
-    return forecast_frame
 
 
 def generate_forecast(
@@ -435,6 +389,8 @@ def benchmark_models(
     scores: list[EvaluationResult] = []
     forecasts: dict[str, pd.DataFrame] = {}
     skipped_models: dict[str, str] = {}
+    from tqdm import tqdm
+
     for model_name in tqdm(model_names, desc="Benchmarking models", unit="model"):
         try:
             result = generate_forecast(
@@ -493,6 +449,8 @@ def export_forecast_plot(
     output_path: Path,
     model_name: str,
 ) -> None:
+    import matplotlib.pyplot as plt
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig, ax = plt.subplots(figsize=(10, 5))
     ax.plot(history_frame[time_col], history_frame[target_col], label="history", linewidth=2)
@@ -516,6 +474,8 @@ def export_benchmark_plot(
     output_path: Path,
     model_name: str,
 ) -> None:
+    import matplotlib.pyplot as plt
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig, ax = plt.subplots(figsize=(10, 5))
     ax.plot(actual_frame[time_col], actual_frame[target_col], label="actual", linewidth=2)

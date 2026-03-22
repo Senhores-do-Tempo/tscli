@@ -10,15 +10,7 @@ from rich.table import Table
 
 from tscli.analysis import recent_observations, summarize_series
 from tscli.data import load_csv
-from tscli.forecasting import (
-    SUPPORTED_MODELS,
-    benchmark_models,
-    export_benchmark_plot,
-    export_frame,
-    export_forecast_plot,
-    export_scores,
-    generate_forecast,
-)
+from tscli.model_catalog import SUPPORTED_MODELS
 
 app = typer.Typer(help="Time series analysis and forecasting CLI powered by DARTS.")
 console = Console()
@@ -110,6 +102,8 @@ def _print_forecast(
     output_path: Path | None,
     plot_output: Path | None,
 ) -> None:
+    from tscli.forecasting import export_forecast_plot, export_frame, generate_forecast
+
     try:
         dataset = load_csv(csv_path, time_col=time_col, target_col=target_col)
     except ValueError as exc:
@@ -163,6 +157,8 @@ def _print_benchmark(
     forecast_output: Path | None,
     plot_output: Path | None,
 ) -> None:
+    from tscli.forecasting import benchmark_models, export_benchmark_plot, export_frame, export_scores
+
     try:
         dataset = load_csv(csv_path, time_col=time_col, target_col=target_col)
     except ValueError as exc:
@@ -219,6 +215,8 @@ def _print_benchmark(
 
 
 def _write_cleaned_csv(csv_path: Path, time_col: str | None, target_col: str, output_path: Path) -> None:
+    from tscli.forecasting import export_frame
+
     try:
         dataset = load_csv(csv_path, time_col=time_col, target_col=target_col)
     except ValueError as exc:
