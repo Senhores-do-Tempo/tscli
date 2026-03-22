@@ -3,17 +3,60 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "tscli"
+name = "tscli-darts"
 version = "0.1.0"
-description = "CLI tool for time series analysis and forecasting using DARTS"
+description = "A DARTS-first CLI for time series analysis, preprocessing, and forecasting"
 readme = "README.md"
+license = "MIT"
 requires-python = ">=3.10"
+authors = [
+  { name = "Senhores do Tempo" }
+]
+keywords = [
+  "time-series",
+  "forecasting",
+  "darts",
+  "cli",
+  "analytics",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering :: Information Analysis",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
 dependencies = [
   "darts>=0.30.0",
+  "matplotlib>=3.9.0",
   "numpy>=1.26.0",
   "pandas>=2.2.0",
   "rich>=13.7.0",
+  "tqdm>=4.66.0",
   "typer>=0.12.3",
+]
+
+[project.urls]
+Homepage = "https://github.com/Senhores-do-Tempo/tscli"
+Repository = "https://github.com/Senhores-do-Tempo/tscli"
+Issues = "https://github.com/Senhores-do-Tempo/tscli/issues"
+
+[project.optional-dependencies]
+classical = [
+  "pytorch-lightning>=2.6.0",
+]
+autoarima = [
+  "statsforecast>=2.0.0",
+]
+full = [
+  "pytorch-lightning>=2.6.0",
+  "statsforecast>=2.0.0",
 ]
 
 [project.scripts]

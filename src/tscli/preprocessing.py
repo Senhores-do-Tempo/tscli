@@ -50,11 +50,6 @@ def parse_time_column(frame: pd.DataFrame, column: str, report: PreprocessingRep
         return frame
 
     stripped = series.astype(str).str.strip()
-    parsed = pd.to_datetime(stripped, errors="coerce")
-    if parsed.notna().all():
-        frame[column] = parsed
-        report.add_fix(f"Parsed '{column}' as datetimes.")
-        return frame
 
     shorthand = stripped.str.extract(r"^(?P<year>\d+)-(?P<month>\d{1,2})$")
     if not shorthand.isna().any(axis=None):
@@ -75,6 +70,12 @@ def parse_time_column(frame: pd.DataFrame, column: str, report: PreprocessingRep
                     f"Converted shorthand year-month values in '{column}' to first-of-month datetimes."
                 )
                 return frame
+
+    parsed = pd.to_datetime(stripped, errors="coerce")
+    if parsed.notna().all():
+        frame[column] = parsed
+        report.add_fix(f"Parsed '{column}' as datetimes.")
+        return frame
 
     frame[column] = parsed
     invalid_count = int(parsed.isna().sum())
